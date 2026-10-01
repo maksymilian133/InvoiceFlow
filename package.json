@@ -1,0 +1,37 @@
+{
+  "name": "invoiceflow",
+  "version": "0.2.0",
+  "description": "InvoiceFlow – AI invoice processing pipeline",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail -n API,WORKER,ERP,UI -c cyan,yellow,magenta,green \"tsx watch src/main.ts\" \"tsx watch src/worker.ts\" \"tsx watch erp/server.ts\" \"npm run dev --prefix frontend\"",
+    "start": "tsx src/main.ts",
+    "worker": "tsx watch src/worker.ts",
+    "erp": "tsx watch erp/server.ts",
+    "build": "tsc",
+    "build:frontend": "npm run build --prefix frontend",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bullmq": "^5.34.8",
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "ioredis": "^5.4.2",
+    "multer": "^1.4.5-lts.1",
+    "pdfjs-dist": "^6.3.289",
+    "pg": "^8.13.3",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.10",
+    "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
+    "concurrently": "^10.0.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

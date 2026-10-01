@@ -1,0 +1,107 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────────── #
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       invoiceflow
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis ─────────────────────────────────────────────────────────── #
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── API (Express + WebSocket) ─────────────────────────────────────── #
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      PORT:       3000
+      DB_HOST:    postgres
+      DB_PORT:    5432
+      DB_NAME:    invoiceflow
+      DB_USER:    postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ERP_URL:    http://erp:3001
+      API_URL:    http://api:3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Worker (BullMQ) ───────────────────────────────────────────────── #
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      DB_HOST:    postgres
+      DB_PORT:    5432
+      DB_NAME:    invoiceflow
+      DB_USER:    postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ERP_URL:    http://erp:3001
+      API_URL:    http://api:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Fake ERP (mock SAP OData) ─────────────────────────────────────── #
+  erp:
+    build:
+      context: .
+      dockerfile: Dockerfile.erp
+    restart: unless-stopped
+    environment:
+      ERP_PORT: 3001
+    ports:
+      - '3001:3001'
+
+  # ── Frontend (React + Vite) ───────────────────────────────────────── #
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '5173:80'
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
